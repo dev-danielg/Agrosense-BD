@@ -17,7 +17,6 @@ end $$
 # Calcular diferença de horas entre duas datas
 create function calcularDifHoras(pDataInicial datetime, pDataFinal datetime)
 returns decimal(3, 1) deterministic
-reads sql data
 begin
 	return timestampdiff(hour, pDataInicial, pDataFinal);
 end $$
@@ -25,7 +24,6 @@ end $$
 # Função para formatar ano/mês
 create function dateFormatAnoMes(pData datetime)
 returns varchar(7) deterministic
-reads sql data
 begin
     return date_format(pData, '%Y/%m');
 end $$
@@ -33,7 +31,6 @@ end $$
 # Função para formatar quantidade
 create function formatarQtd(pQtd decimal(18,2))
 returns varchar(30) deterministic
-reads sql data
 begin
     if pQtd is null or pQtd = 0 then
         return '-';
@@ -45,7 +42,6 @@ end $$
 # Função para formatar percentual
 create function formatarQtdPercentual(pQtd decimal(10,2))
 returns varchar(30) deterministic
-reads sql data
 begin
     if pQtd is null then
         return '-';
@@ -166,10 +162,107 @@ begin
 		ultimaAtualizacao = now();
 end $$
 
-create procedure sp
+# Procedure para adicionar uma movimentação
+create procedure spAdicionarMov(in pQtdKg decimal(10, 2), 
+								in pIdArmazemOrigem int,
+								in pIdArmazemDestino int,
+								in pIdLote int, 
+								in pIdOperadorArmazem int,
+                                in pIdCooperativa int)
+modifies sql data
+begin
+	declare vIdMov int;
+
+	insert into movimentacao(dataRegistro, qtdKg, status, idLote, idOperadorArmazem)
+    values (now(), pQtdKg, "Em andamento", pIdLote, pIdOperadorArmazem);
+    
+    set vIdMov = last_insert_id();
+    
+    if pIdArmazemDestino is not null and pIdArmazemOrigem is null then
+		insert into entrada 
+        values(vIdMov, pIdArmazemDestino);
+    
+    elseif pIdArmazemOrigem is not null and pIdArmazemDestino is not null then
+		insert into transferencia 
+		values(vIdMov, pIdArmazemOrigem, pIdArmazemDestino);
+	
+    elseif pIdArmazemOrigem is not null and pIdCooperativa is not null then
+		insert into expedicao
+		values (vIdMov, pIdArmazemOrigem, pIdCooperativa, null);
+	end if;
+end $$
+
+#Procedure para atualizar uma movimentação
+create procedure spAtualizarStatusMov(in pIdMovimentacao int, 
+                                      in pIdAgenteDistribuicao int,
+									  in pStatus varchar(100))
+modifies sql data
+begin
+	declare vQtdKg decimal(10, 2);
+    declare vIdArmazemOrigem int;
+    declare vIdArmazemDestino int;
+    declare vIdLote int;
+    
+    if not exists(select * from movimentacao where idMovimentacao = pIdMovimentacao) then
+		signal sqlstate "45000" set message_text = "Movimentação informada não existe.";
+    end if;
+    
+    if pStatus not in ("Concluído", "Em andamento", "Cancelado") then
+		signal sqlstate "45000" set message_text = "Status informado inválido.";
+	end if;
+    
+    if pStatus = "Concluído" then
+		select qtdKg, idLote into vQtdKg, vIdLote
+        from movimentacao 
+        where idMovimentacao = pIdMovimentacao;
+        
+		if exists(select * from entrada where idMovimentacao = pIdMovimentacao) then
+			select idArmazemDestino into vIdArmazemDestino 
+			from entrada
+			where idMovimentacao = pIdMovimentacao; 
+                
+            if vIdArmazemDestino is not null then    
+                call spAdicionarEstoque(vQtdKg, vIdArmazemDestino, vIdLote);
+            end if;
+    
+		elseif exists(select * from transferencia where idMovimentacao = pIdMovimentacao) then
+			select idArmazemOrigem, idArmazemDestino into vIdArmazemOrigem, vIdArmazemDestino
+			from transferencia
+			where idMovimentacao = pIdMovimentacao;
+            
+            if vIdArmazemOrigem is not null and vIdArmazemDestino is not null then    
+				call spSubtrairEstoque(vQtdKg, vIdArmazemOrigem, vIdLote);
+				call spAdicionarEstoque(vQtdKg, vIdArmazemDestino, vIdLote);
+			end if;
+        
+        elseif exists(select * from expedicao where idMovimentacao = pIdMovimentacao) then
+			if pIdAgenteDistribuicao is null then
+				signal sqlstate "45000" set message_text = "Agente de distribuição deve ser informado ao concluir expedição.";
+			else
+				update expedicao
+					set idAgenteDistribuicao = pIdAgenteDistribuicao
+					where idMovimentacao = pIdMovimentacao;
+			end if;
+            
+            select idArmazemOrigem into vIdArmazemOrigem
+			from expedicao
+			where idMovimentacao = pIdMovimentacao;
+            
+            if vIdArmazemOrigem is not null then
+				call spSubtrairEstoque(vQtdKg, vIdArmazemOrigem, vIdLote);		
+            end if;
+		end if;
+    
+		update movimentacao
+			set dataEntrega = now()
+			where idMovimentacao = pIdMovimentacao;
+        end if;    
+
+	update movimentacao 
+		set status = pStatus
+		where idMovimentacao = pIdMovimentacao;
+end $$
 
 
-
-delimiter ;
 
 

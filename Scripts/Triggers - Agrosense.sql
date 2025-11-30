@@ -61,11 +61,9 @@ create trigger after_expedicao_insert
 after insert on expedicao
 for each row
 begin
-	if new.idAgenteDistribuicao is not null then
-		update movimentacao
-			set dataEntrega = now()
-			where idMovimentacao = new.idMovimentacao and dataEntrega is null;
-	end if;
+	update movimentacao
+		set dataEntrega = now()
+		where idMovimentacao = new.idMovimentacao and dataEntrega is null;
 end $$
 
 
@@ -110,6 +108,10 @@ begin
 	declare vMovStatus varchar(100);
     set vMovStatus = getMovimentacaoStatus(new.idMovimentacao);
     
+    if new.idAgenteDistribuicao is null then
+		signal sqlstate "45000" set message_text = "Agente de distribuição deve ser informado ao concluir expedição.";
+	end if;
+    
 	if vMovStatus = "Cancelado" then
 		signal sqlstate "45000" set message_text = "Expedições canceladas não podem ser mais alteradas.";
     
@@ -123,30 +125,9 @@ create trigger after_expedicao_update
 after update on expedicao
 for each row
 begin
-	if new.idAgenteDistribuicao is not null then
-		update movimentacao
-			set dataEntrega = now()
-			where idMovimentacao = new.idMovimentacao and dataEntrega is null;
-	end if;
-end $$
-
-# Trigger para verificar se há alguma movimentação registrada para criar o Estoque
-create trigger before_estoque_insert
-before insert on estoque
-for each row
-begin
-	declare vEntradaExistente int default 0;
-    
-    select exists(
-		select * from entrada 
-        join movimentacao 
-			on entrada.idMovimentacao = movimentacao.idMovimentacao
-        where entrada.idArmazemDestino = new.idArmazem and movimentacao.idLote = new.idLote
-    ) into vEntradaExistente;
-    
-    if not vEntradaExistente then
-		signal sqlstate "45000" set message_text = "Estoque não pode ser registrado sem um registro de entrada antes.";
-    end if;
+	update movimentacao
+		set dataEntrega = now()
+		where idMovimentacao = new.idMovimentacao and dataEntrega is null;
 end $$
 
 # Trigger para verificar se validade do lote passada é válida após insert
@@ -176,7 +157,7 @@ begin
 	into vMovimentacaoExistente;
     
 	if vMovimentacaoExistente then
-		if new.qtdKg != old.qtdKg then
+		if new.qtdInicialKg != old.qtdInicialKg then
 			signal sqlstate "45000" set message_text = "Quantidade inicial (KG) não pode ser alterada com registro de movimentação ativo.";
 		end if;
 		
