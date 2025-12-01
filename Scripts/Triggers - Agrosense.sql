@@ -140,9 +140,19 @@ begin
 	end if;
 end $$
 
+# Trigger para inserir código QR
+create trigger after_lote_insert
+after insert on lote
+for each row
+begin
+	if new.codigoQr is null or trim(new.codigoQr) = "" then
+		set new.codigoQr = concat(new.numero, "-", replace(dateFormatBR(new.dataValidade), "/", ""));
+	end if;
+end $$
+
 # Trigger para verificar se validade do lote passada é válida e impedir alterações com mov existente ativo
 create trigger before_lote_update
-before update on lote
+after update on lote
 for each row
 begin
 	declare vMovimentacaoExistente int default 0;
@@ -166,6 +176,8 @@ begin
 		end if;
 	end if;
 end $$
+
+
 	
 delimiter ;
 		
