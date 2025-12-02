@@ -120,11 +120,13 @@ CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Solicitacao` (
   `dataSolicitacao` DATETIME NOT NULL,
   `status` ENUM("Pendente", "Concluido", "Rejeitado") NOT NULL,
   `idAgricultor` INT NOT NULL,
+  `idEspecie` INT NOT NULL,
   `idGestorIPA` INT NULL,
   `motivoRejeicao` VARCHAR(300) NULL,
   INDEX `fk_Solicitacao_Usuario1_idx` (`idGestorIPA` ASC) VISIBLE,
   PRIMARY KEY (`idSolicitacao`),
   INDEX `fk_Solicitacao_Usuario2_idx` (`idAgricultor` ASC) VISIBLE,
+  INDEX `fk_Solicitacao_Especie1_idx` (`idEspecie` ASC) VISIBLE,
   CONSTRAINT `fk_Solicitacao_Usuario1`
     FOREIGN KEY (`idGestorIPA`)
     REFERENCES `BD-ProgAqsDistSemente`.`Usuario` (`idUsuario`)
@@ -133,6 +135,11 @@ CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Solicitacao` (
   CONSTRAINT `fk_Solicitacao_Usuario2`
     FOREIGN KEY (`idAgricultor`)
     REFERENCES `BD-ProgAqsDistSemente`.`Usuario` (`idUsuario`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Solicitacao_Especie1`
+    FOREIGN KEY (`idEspecie`)
+    REFERENCES `BD-ProgAqsDistSemente`.`Especie` (`idEspecie`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
