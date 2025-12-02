@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Usuario` (
   `cpfCnpj` VARCHAR(20) NOT NULL,
   `email` VARCHAR(100) NULL,
   `telefone` VARCHAR(15) NULL,
-  `status` ENUM("Ativo", "Rejeitado", "Pendente") NOT NULL,
+  `tipo` ENUM("Gestor", "OperadorArmazem", "AgenteDistribuicao", "Agricultor") NOT NULL,
   `idEndereco` INT NOT NULL,
   PRIMARY KEY (`idUsuario`),
   UNIQUE INDEX `email_UNIQUE` (`email` ASC) VISIBLE,
@@ -80,20 +80,6 @@ CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Usuario` (
     FOREIGN KEY (`idEndereco`)
     REFERENCES `BD-ProgAqsDistSemente`.`Endereco` (`idEndereco`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `BD-ProgAqsDistSemente`.`Fornecedor`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Fornecedor` (
-  `idFornecedor` INT NOT NULL,
-  PRIMARY KEY (`idFornecedor`),
-  CONSTRAINT `fk_Fornecedor_Usuario1`
-    FOREIGN KEY (`idFornecedor`)
-    REFERENCES `BD-ProgAqsDistSemente`.`Usuario` (`idUsuario`)
-    ON DELETE CASCADE
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
@@ -112,31 +98,42 @@ CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Lote` (
   PRIMARY KEY (`idLote`),
   INDEX `fk_Lote_Especie_idx` (`idEspecie` ASC) VISIBLE,
   UNIQUE INDEX `numero_UNIQUE` (`numero` ASC) VISIBLE,
-  INDEX `fk_Lote_Fornecedor1_idx` (`idFornecedor` ASC) VISIBLE,
+  INDEX `fk_Lote_Usuario1_idx` (`idFornecedor` ASC) VISIBLE,
   CONSTRAINT `fk_Lote_Especie`
     FOREIGN KEY (`idEspecie`)
     REFERENCES `BD-ProgAqsDistSemente`.`Especie` (`idEspecie`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `fk_Lote_Fornecedor1`
+  CONSTRAINT `fk_Lote_Usuario1`
     FOREIGN KEY (`idFornecedor`)
-    REFERENCES `BD-ProgAqsDistSemente`.`Fornecedor` (`idFornecedor`)
+    REFERENCES `BD-ProgAqsDistSemente`.`Usuario` (`idUsuario`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `BD-ProgAqsDistSemente`.`OperadorArmazem`
+-- Table `BD-ProgAqsDistSemente`.`Solicitacao`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`OperadorArmazem` (
-  `idOperadorArmazem` INT NOT NULL,
-  PRIMARY KEY (`idOperadorArmazem`),
-  INDEX `fk_OperadorDeArmazem_Usuario1_idx` (`idOperadorArmazem` ASC) VISIBLE,
-  CONSTRAINT `fk_OperadorDeArmazem_Usuario1`
-    FOREIGN KEY (`idOperadorArmazem`)
+CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Solicitacao` (
+  `idSolicitacao` INT NOT NULL AUTO_INCREMENT,
+  `dataSolicitacao` DATETIME NOT NULL,
+  `status` ENUM("Pendente", "Concluído", "Rejeitado") NOT NULL,
+  `idAgricultor` INT NOT NULL,
+  `idGestorIPA` INT NULL,
+  `motivoRejeicao` VARCHAR(300) NULL,
+  INDEX `fk_Solicitacao_Usuario1_idx` (`idGestorIPA` ASC) VISIBLE,
+  PRIMARY KEY (`idSolicitacao`),
+  INDEX `fk_Solicitacao_Usuario2_idx` (`idAgricultor` ASC) VISIBLE,
+  CONSTRAINT `fk_Solicitacao_Usuario1`
+    FOREIGN KEY (`idGestorIPA`)
     REFERENCES `BD-ProgAqsDistSemente`.`Usuario` (`idUsuario`)
-    ON DELETE CASCADE
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Solicitacao_Usuario2`
+    FOREIGN KEY (`idAgricultor`)
+    REFERENCES `BD-ProgAqsDistSemente`.`Usuario` (`idUsuario`)
+    ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
@@ -152,17 +149,45 @@ CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Movimentacao` (
   `status` ENUM("Em análise", "Em andamento", "Concluído", "Cancelado") NOT NULL,
   `idLote` INT NOT NULL,
   `idOperadorArmazem` INT NOT NULL,
+  `idSolicitacao` INT NOT NULL,
+  `idArmazemOrigem` INT NULL,
+  `idArmazemDestino` INT NULL,
+  `idAgenteDistribuicao` INT NULL,
   PRIMARY KEY (`idMovimentacao`),
   INDEX `fk_Movimentacao_Lote1_idx` (`idLote` ASC) VISIBLE,
-  INDEX `fk_Movimentacao_OperadorDeArmz1_idx` (`idOperadorArmazem` ASC) VISIBLE,
+  INDEX `fk_Movimentacao_Usuario1_idx` (`idOperadorArmazem` ASC) VISIBLE,
+  INDEX `fk_Movimentacao_Armazem1_idx` (`idArmazemOrigem` ASC) VISIBLE,
+  INDEX `fk_Movimentacao_Armazem2_idx` (`idArmazemDestino` ASC) VISIBLE,
+  INDEX `fk_Movimentacao_Usuario2_idx` (`idAgenteDistribuicao` ASC) VISIBLE,
+  INDEX `fk_Movimentacao_Solicitacao1_idx` (`idSolicitacao` ASC) VISIBLE,
   CONSTRAINT `fk_Movimentacao_Lote1`
     FOREIGN KEY (`idLote`)
     REFERENCES `BD-ProgAqsDistSemente`.`Lote` (`idLote`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `fk_Movimentacao_OperadorDeArmz1`
+  CONSTRAINT `fk_Movimentacao_Usuario1`
     FOREIGN KEY (`idOperadorArmazem`)
-    REFERENCES `BD-ProgAqsDistSemente`.`OperadorArmazem` (`idOperadorArmazem`)
+    REFERENCES `BD-ProgAqsDistSemente`.`Usuario` (`idUsuario`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Movimentacao_Armazem1`
+    FOREIGN KEY (`idArmazemOrigem`)
+    REFERENCES `BD-ProgAqsDistSemente`.`Armazem` (`idArmazem`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Movimentacao_Armazem2`
+    FOREIGN KEY (`idArmazemDestino`)
+    REFERENCES `BD-ProgAqsDistSemente`.`Armazem` (`idArmazem`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Movimentacao_Usuario2`
+    FOREIGN KEY (`idAgenteDistribuicao`)
+    REFERENCES `BD-ProgAqsDistSemente`.`Usuario` (`idUsuario`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Movimentacao_Solicitacao1`
+    FOREIGN KEY (`idSolicitacao`)
+    REFERENCES `BD-ProgAqsDistSemente`.`Solicitacao` (`idSolicitacao`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
@@ -175,42 +200,21 @@ CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Cooperativa` (
   `idCooperativa` INT NOT NULL AUTO_INCREMENT,
   `cnpj` VARCHAR(20) NOT NULL,
   `razaoSocial` VARCHAR(100) NOT NULL,
+  `idGestorCooperativa` INT NOT NULL,
   `idEndereco` INT NOT NULL,
   PRIMARY KEY (`idCooperativa`),
   INDEX `fk_Cooperativa_Endereco1_idx` (`idEndereco` ASC) VISIBLE,
   UNIQUE INDEX `idEndereco_UNIQUE` (`idEndereco` ASC) VISIBLE,
+  INDEX `fk_Cooperativa_Usuario1_idx` (`idGestorCooperativa` ASC) VISIBLE,
   CONSTRAINT `fk_Cooperativa_Endereco1`
     FOREIGN KEY (`idEndereco`)
     REFERENCES `BD-ProgAqsDistSemente`.`Endereco` (`idEndereco`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `BD-ProgAqsDistSemente`.`AgenteDistribuicao`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`AgenteDistribuicao` (
-  `idAgenteDistribuicao` INT NOT NULL,
-  PRIMARY KEY (`idAgenteDistribuicao`),
-  CONSTRAINT `fk_AgenteDeDist_Usuario1`
-    FOREIGN KEY (`idAgenteDistribuicao`)
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Cooperativa_Usuario1`
+    FOREIGN KEY (`idGestorCooperativa`)
     REFERENCES `BD-ProgAqsDistSemente`.`Usuario` (`idUsuario`)
-    ON DELETE CASCADE
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `BD-ProgAqsDistSemente`.`Gestor`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Gestor` (
-  `idGestor` INT NOT NULL,
-  PRIMARY KEY (`idGestor`),
-  CONSTRAINT `fk_Gestor_Usuario1`
-    FOREIGN KEY (`idGestor`)
-    REFERENCES `BD-ProgAqsDistSemente`.`Usuario` (`idUsuario`)
-    ON DELETE CASCADE
+    ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
@@ -235,90 +239,6 @@ CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Estoque` (
     FOREIGN KEY (`idArmazem`)
     REFERENCES `BD-ProgAqsDistSemente`.`Armazem` (`idArmazem`)
     ON DELETE CASCADE
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `BD-ProgAqsDistSemente`.`Transferencia`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Transferencia` (
-  `idMovimentacao` INT NOT NULL,
-  `idArmazemOrigem` INT NOT NULL,
-  `idArmazemDestino` INT NOT NULL,
-  PRIMARY KEY (`idMovimentacao`),
-  INDEX `fk_Transferência_Armazem1_idx` (`idArmazemOrigem` ASC) VISIBLE,
-  INDEX `fk_Transferência_Armazem2_idx` (`idArmazemDestino` ASC) VISIBLE,
-  CONSTRAINT `fk_table1_Movimentacao1`
-    FOREIGN KEY (`idMovimentacao`)
-    REFERENCES `BD-ProgAqsDistSemente`.`Movimentacao` (`idMovimentacao`)
-    ON DELETE CASCADE
-    ON UPDATE NO ACTION,
-  CONSTRAINT `fk_Transferência_Armazem1`
-    FOREIGN KEY (`idArmazemOrigem`)
-    REFERENCES `BD-ProgAqsDistSemente`.`Armazem` (`idArmazem`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  CONSTRAINT `fk_Transferência_Armazem2`
-    FOREIGN KEY (`idArmazemDestino`)
-    REFERENCES `BD-ProgAqsDistSemente`.`Armazem` (`idArmazem`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `BD-ProgAqsDistSemente`.`Entrada`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Entrada` (
-  `idMovimentacao` INT NOT NULL,
-  `idArmazemDestino` INT NOT NULL,
-  PRIMARY KEY (`idMovimentacao`),
-  INDEX `fk_Entrada_Armazem1_idx` (`idArmazemDestino` ASC) VISIBLE,
-  CONSTRAINT `fk_Entrada_Movimentacao1`
-    FOREIGN KEY (`idMovimentacao`)
-    REFERENCES `BD-ProgAqsDistSemente`.`Movimentacao` (`idMovimentacao`)
-    ON DELETE CASCADE
-    ON UPDATE NO ACTION,
-  CONSTRAINT `fk_Entrada_Armazem1`
-    FOREIGN KEY (`idArmazemDestino`)
-    REFERENCES `BD-ProgAqsDistSemente`.`Armazem` (`idArmazem`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `BD-ProgAqsDistSemente`.`Expedicao`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Expedicao` (
-  `idMovimentacao` INT NOT NULL,
-  `idArmazemOrigem` INT NOT NULL,
-  `idCooperativa` INT NOT NULL,
-  `idAgenteDistribuicao` INT NULL,
-  PRIMARY KEY (`idMovimentacao`),
-  INDEX `fk_Expedicao_Armazem1_idx` (`idArmazemOrigem` ASC) VISIBLE,
-  INDEX `fk_Expedicao_AgenteDistribuicao1_idx` (`idAgenteDistribuicao` ASC) VISIBLE,
-  INDEX `fk_Expedicao_Cooperativa1_idx` (`idCooperativa` ASC) VISIBLE,
-  CONSTRAINT `fk_Expedicao_Movimentacao1`
-    FOREIGN KEY (`idMovimentacao`)
-    REFERENCES `BD-ProgAqsDistSemente`.`Movimentacao` (`idMovimentacao`)
-    ON DELETE CASCADE
-    ON UPDATE NO ACTION,
-  CONSTRAINT `fk_Expedicao_Armazem1`
-    FOREIGN KEY (`idArmazemOrigem`)
-    REFERENCES `BD-ProgAqsDistSemente`.`Armazem` (`idArmazem`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  CONSTRAINT `fk_Expedicao_AgenteDistribuicao1`
-    FOREIGN KEY (`idAgenteDistribuicao`)
-    REFERENCES `BD-ProgAqsDistSemente`.`AgenteDistribuicao` (`idAgenteDistribuicao`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  CONSTRAINT `fk_Expedicao_Cooperativa1`
-    FOREIGN KEY (`idCooperativa`)
-    REFERENCES `BD-ProgAqsDistSemente`.`Cooperativa` (`idCooperativa`)
-    ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
