@@ -118,7 +118,7 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Solicitacao` (
   `idSolicitacao` INT NOT NULL AUTO_INCREMENT,
   `dataSolicitacao` DATETIME NOT NULL,
-  `status` ENUM("Pendente", "Concluído", "Rejeitado") NOT NULL,
+  `status` ENUM("Pendente", "Concluido", "Rejeitado") NOT NULL,
   `idAgricultor` INT NOT NULL,
   `idGestorIPA` INT NULL,
   `motivoRejeicao` VARCHAR(300) NULL,
@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS `BD-ProgAqsDistSemente`.`Movimentacao` (
   `dataRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `dataEntrega` DATETIME NULL,
   `qtdKg` DECIMAL(10,2) UNSIGNED NOT NULL,
+  `tipo` ENUM("Entrada", "Transferencia", "Expedicao") NOT NULL,
   `status` ENUM("Em análise", "Em andamento", "Concluído", "Cancelado") NOT NULL,
   `idLote` INT NOT NULL,
   `idOperadorArmazem` INT NOT NULL,
